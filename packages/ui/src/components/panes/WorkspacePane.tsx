@@ -88,18 +88,9 @@ export const WorkspacePane: React.FC<WorkspacePaneProps> = ({
           setCurrentSession(session.id);
         }
       } else {
-        const titles: Record<PaneTabType, string> = {
-          chat: 'Chat',
-          diff: 'Diff',
-          files: 'Files',
-          terminal: 'Terminal',
-          git: 'Git',
-          todo: 'Note',
-          preview: 'Preview',
-        };
         addTab(paneId, {
           type,
-          title: titles[type],
+          title: getTabLabel(type),
         });
       }
       setFocusedPane(paneId);
