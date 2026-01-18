@@ -636,16 +636,36 @@ export const WorktreeSidebar: React.FC<WorktreeSidebarProps> = () => {
   const handleCloseWorktree = useCallback((worktreePath: string) => {
     const normalizedPath = normalizePath(worktreePath);
     if (!normalizedPath) return;
-    
-    if (normalizedPath === normalizePath(currentDirectory)) {
-      const activeProject = projects.find(p => p.id === activeProjectId);
-      if (activeProject) {
-        setDirectory(activeProject.path);
+
+    // Find the worktree metadata from availableWorktreesByProject
+    let worktreeMetadata: WorktreeMetadata | null = null;
+    for (const [projectPath, worktrees] of availableWorktreesByProject.entries()) {
+      const found = worktrees.find(w => normalizePath(w.path) === normalizedPath);
+      if (found) {
+        worktreeMetadata = found;
+        break;
       }
     }
-    
-    toast.success('Worktree closed');
-  }, [currentDirectory, projects, activeProjectId, setDirectory]);
+
+    if (!worktreeMetadata) {
+      // Worktree not found in tracked worktrees, just show a message
+      toast.error('Worktree not found');
+      return;
+    }
+
+    // Find sessions linked to this worktree
+    const linkedSessions = sessions.filter(session => {
+      const sessionDir = normalizePath(session.directory ?? null);
+      return sessionDir === normalizedPath;
+    });
+
+    // Trigger the delete dialog via sessionEvents
+    sessionEvents.requestDelete({
+      sessions: linkedSessions,
+      mode: 'worktree',
+      worktree: worktreeMetadata,
+    });
+  }, [availableWorktreesByProject, sessions]);
 
   const handleOpenBranchPicker = useCallback(() => {
     setBranchPickerOpen(true);
