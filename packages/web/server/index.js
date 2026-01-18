@@ -3984,30 +3984,64 @@ async function main(options = {}) {
 
   app.get('/api/github/repos', async (req, res) => {
     try {
-      const result = spawnSync('gh', [
+      // Fetch user's own repositories
+      const userReposResult = spawnSync('gh', [
         'repo', 'list',
         '--json', 'name,nameWithOwner,description,isPrivate,url,sshUrl',
         '--limit', '100'
       ], { encoding: 'utf8', timeout: 30000 });
 
-      if (result.error) {
-        const errorMessage = result.error.message || 'GitHub CLI error';
+      if (userReposResult.error) {
+        const errorMessage = userReposResult.error.message || 'GitHub CLI error';
         if (errorMessage.includes('ENOENT')) {
           return res.status(500).json({ error: 'GitHub CLI (gh) not installed' });
         }
         return res.status(500).json({ error: errorMessage });
       }
 
-      if (result.status !== 0) {
-        const stderr = result.stderr || '';
+      if (userReposResult.status !== 0) {
+        const stderr = userReposResult.stderr || '';
         if (stderr.includes('auth') || stderr.includes('login')) {
           return res.status(401).json({ error: 'Not logged in. Run "gh auth login" in your terminal.' });
         }
         return res.status(500).json({ error: stderr || 'GitHub CLI error' });
       }
 
-      const repos = JSON.parse(result.stdout || '[]');
-      const mapped = repos.map((r) => ({
+      const userRepos = JSON.parse(userReposResult.stdout || '[]');
+
+      // Fetch organizations the user has access to
+      const orgsResult = spawnSync('gh', [
+        'org', 'list',
+        '--limit', '100'
+      ], { encoding: 'utf8', timeout: 30000 });
+
+      let allRepos = [...userRepos];
+
+      // If we successfully got organizations, fetch their repositories
+      if (orgsResult.status === 0 && orgsResult.stdout) {
+        const orgs = orgsResult.stdout.trim().split('\n').filter(Boolean);
+        
+        for (const org of orgs) {
+          try {
+            const orgReposResult = spawnSync('gh', [
+              'repo', 'list', org,
+              '--json', 'name,nameWithOwner,description,isPrivate,url,sshUrl',
+              '--limit', '100'
+            ], { encoding: 'utf8', timeout: 30000 });
+
+            if (orgReposResult.status === 0 && orgReposResult.stdout) {
+              const orgRepos = JSON.parse(orgReposResult.stdout || '[]');
+              allRepos = allRepos.concat(orgRepos);
+            }
+          } catch (error) {
+            // Log but don't fail if a single org fetch fails
+            console.warn(`Failed to fetch repos for org ${org}:`, error);
+          }
+        }
+      }
+
+      // Map to the expected format
+      const mapped = allRepos.map((r) => ({
         name: r.name,
         fullName: r.nameWithOwner,
         description: r.description,
@@ -4037,16 +4071,26 @@ async function main(options = {}) {
       const expandedPath = normalizeDirectoryPath(targetDirectory);
       const resolvedPath = path.resolve(expandedPath);
 
-      if (fs.existsSync(resolvedPath)) {
-        return res.status(400).json({ error: `Directory already exists: ${resolvedPath}` });
+      // Find an available directory name if the target already exists
+      let finalPath = resolvedPath;
+      if (fs.existsSync(finalPath)) {
+        let suffix = 2;
+        while (fs.existsSync(`${resolvedPath}-${suffix}`)) {
+          suffix++;
+          // Safety limit to prevent infinite loops
+          if (suffix > 100) {
+            return res.status(400).json({ error: 'Too many directories with similar names exist' });
+          }
+        }
+        finalPath = `${resolvedPath}-${suffix}`;
       }
 
-      const parentDir = path.dirname(resolvedPath);
+      const parentDir = path.dirname(finalPath);
       if (!fs.existsSync(parentDir)) {
         fs.mkdirSync(parentDir, { recursive: true });
       }
 
-      const result = spawnSync('git', ['clone', cloneUrl, resolvedPath], {
+      const result = spawnSync('git', ['clone', cloneUrl, finalPath], {
         encoding: 'utf8',
         timeout: 120000
       });
@@ -4059,7 +4103,7 @@ async function main(options = {}) {
         return res.status(500).json({ error: result.stderr || 'Git clone failed' });
       }
 
-      res.json({ success: true, path: resolvedPath });
+      res.json({ success: true, path: finalPath });
     } catch (error) {
       console.error('Failed to clone repository:', error);
       res.status(500).json({ error: error.message || 'Failed to clone repository' });
