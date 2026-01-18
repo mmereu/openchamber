@@ -36,14 +36,16 @@ export const MainLayout: React.FC = () => {
     const currentDirectory = useDirectoryStore((state) => state.currentDirectory);
     const worktreeId = currentDirectory ?? 'global';
 
-    const { rightPaneWidth, setRightPaneWidth } = usePaneStore();
-    const { addTab, activateTabByIndex, closeActiveTab, focusedPane, rightPane, moveTab, setFocusedPane } = usePanes(worktreeId);
+    const { rightPaneWidth, setRightPaneWidth, rightBottomHeight, setRightBottomHeight, rightBottomCollapsed } = usePaneStore();
+    const { addTab, activateTabByIndex, closeActiveTab, focusedPane, rightPane, rightBottomPane, moveTab, setFocusedPane } = usePanes(worktreeId);
     const { createSession, setCurrentSession } = useSessionStore();
     const [isResizing, setIsResizing] = React.useState(false);
+    const [isVerticalResizing, setIsVerticalResizing] = React.useState(false);
     const [isDraggingTab, setIsDraggingTab] = useState(false);
     const [isRightDropZoneHovered, setIsRightDropZoneHovered] = useState(false);
     
     const rightPaneVisible = rightPane.tabs.length > 0;
+    const rightBottomVisible = rightBottomPane.tabs.length > 0;
 
     React.useEffect(() => {
         const handleDragStart = (e: DragEvent) => {
@@ -198,6 +200,34 @@ export const MainLayout: React.FC = () => {
         document.addEventListener('mouseup', handleMouseUp);
     }, [rightPaneWidth, setRightPaneWidth, setGlobalResizing]);
 
+    const handleVerticalResizeStart = React.useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsVerticalResizing(true);
+        setGlobalResizing(true);
+
+        const startY = e.clientY;
+        const startHeight = rightBottomHeight;
+        const containerHeight = window.innerHeight;
+        const MIN_HEIGHT = 100;
+        const maxHeight = Math.floor(containerHeight * 0.7);
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const delta = moveEvent.clientY - startY;
+            const newHeight = Math.max(MIN_HEIGHT, Math.min(maxHeight, startHeight - delta));
+            setRightBottomHeight(newHeight);
+        };
+
+        const handleMouseUp = () => {
+            setIsVerticalResizing(false);
+            setGlobalResizing(false);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }, [rightBottomHeight, setRightBottomHeight, setGlobalResizing]);
+
     const handleRightDropZoneDragOver = useCallback((e: React.DragEvent) => {
         if (e.dataTransfer.types.includes('application/x-openchamber-tab')) {
             e.preventDefault();
@@ -314,13 +344,36 @@ export const MainLayout: React.FC = () => {
                                                     onMouseDown={handleResizeStart}
                                                     style={{ borderLeft: '1px solid var(--interactive-border)' }}
                                                 />
-                                                <WorkspacePane
-                                                    paneId="right"
-                                                    worktreeId={worktreeId}
-                                                    className="shrink-0"
+                                                <div 
+                                                    className="shrink-0 flex flex-col overflow-hidden"
                                                     style={{ width: rightPaneWidth }}
-                                                    isLastPane={true}
-                                                />
+                                                >
+                                                    <WorkspacePane
+                                                        paneId="right"
+                                                        worktreeId={worktreeId}
+                                                        className="flex-1 min-h-0"
+                                                        isLastPane={!rightBottomVisible}
+                                                    />
+                                                    {rightBottomVisible && !rightBottomCollapsed && (
+                                                        <>
+                                                            <div
+                                                                className={cn(
+                                                                    'h-1 cursor-row-resize hover:bg-primary/20 transition-colors shrink-0',
+                                                                    isVerticalResizing && 'bg-primary/30'
+                                                                )}
+                                                                onMouseDown={handleVerticalResizeStart}
+                                                                style={{ borderTop: '1px solid var(--interactive-border)' }}
+                                                            />
+                                                            <WorkspacePane
+                                                                paneId="rightBottom"
+                                                                worktreeId={worktreeId}
+                                                                className="shrink-0"
+                                                                style={{ height: rightBottomHeight }}
+                                                                isLastPane={true}
+                                                            />
+                                                        </>
+                                                    )}
+                                                </div>
                                             </>
                                         ) : isDraggingTab && (
                                             <div
