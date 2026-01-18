@@ -37,7 +37,7 @@ export const MainLayout: React.FC = () => {
     const worktreeId = currentDirectory ?? 'global';
 
     const { rightPaneWidth, setRightPaneWidth, rightBottomHeight, setRightBottomHeight, rightBottomCollapsed, setRightBottomCollapsed } = usePaneStore();
-    const { addTab, activateTabByIndex, closeActiveTab, focusedPane, rightPane, rightBottomPane, moveTab, setFocusedPane } = usePanes(worktreeId);
+    const { addTab, activateTabByIndex, closeActiveTab, focusedPane, rightPane, rightBottomPane, moveTab, setFocusedPane, toggleRightBottomCollapsed } = usePanes(worktreeId);
     const { createSession, setCurrentSession } = useSessionStore();
     const [isResizing, setIsResizing] = React.useState(false);
     const [isVerticalResizing, setIsVerticalResizing] = React.useState(false);
@@ -121,11 +121,25 @@ export const MainLayout: React.FC = () => {
                 closeActiveTab();
                 return;
             }
+
+            if (e.key === 'j' && !e.shiftKey) {
+                e.preventDefault();
+                if (!rightPaneVisible) return;
+                
+                if (rightBottomPane.tabs.length > 0) {
+                    toggleRightBottomCollapsed();
+                } else {
+                    addTab('rightBottom', { type: 'terminal', title: 'Terminal' });
+                    setRightBottomCollapsed(false);
+                    setFocusedPane('rightBottom');
+                }
+                return;
+            }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isMobile, activateTabByIndex, closeActiveTab, addTab, focusedPane, createSession, setCurrentSession]);
+    }, [isMobile, activateTabByIndex, closeActiveTab, addTab, focusedPane, createSession, setCurrentSession, rightPaneVisible, rightBottomPane.tabs.length, toggleRightBottomCollapsed, setRightBottomCollapsed, setFocusedPane]);
 
     const checkForUpdates = useUpdateStore((state) => state.checkForUpdates);
     React.useEffect(() => {
