@@ -11,6 +11,8 @@ import {
   RiTerminalBoxLine,
   RiArrowDownSLine,
   RiDeleteBinLine,
+  RiCodeBoxLine,
+  RiToolsLine,
 } from '@remixicon/react';
 import { cn } from '@/lib/utils';
 import { useFileStore } from '@/stores/fileStore';
@@ -91,8 +93,10 @@ function isProxyUrl(targetUrl: string): boolean {
   }
 }
 
-function buildProxyUrl(targetUrl: string): string {
-  return `/api/preview-proxy?url=${encodeURIComponent(targetUrl)}`;
+type DevToolsMode = 'basic' | 'advanced';
+
+function buildProxyUrl(targetUrl: string, devToolsMode: DevToolsMode = 'basic'): string {
+  return `/api/preview-proxy?url=${encodeURIComponent(targetUrl)}&devtools_mode=${devToolsMode}`;
 }
 
 const DEFAULT_URL = 'http://localhost:3000';
@@ -103,6 +107,8 @@ interface PreviewTabMetadata {
   historyIndex?: number;
   useProxy?: boolean;
   showConsole?: boolean;
+  devToolsMode?: DevToolsMode;
+  showDevTools?: boolean;
 }
 
 export const PreviewView: React.FC = () => {
@@ -120,6 +126,8 @@ export const PreviewView: React.FC = () => {
   const initialHistoryIndex = metadata.historyIndex ?? 0;
   const initialUseProxy = metadata.useProxy ?? true;
   const initialShowConsole = metadata.showConsole ?? false;
+  const initialDevToolsMode = metadata.devToolsMode ?? 'basic';
+  const initialShowDevTools = metadata.showDevTools ?? false;
   
   const [url, setUrl] = useState(initialUrl);
   const [inputUrl, setInputUrl] = useState(initialUrl);
@@ -130,6 +138,9 @@ export const PreviewView: React.FC = () => {
   const [showConsole, setShowConsole] = useState(initialShowConsole);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
   const [consoleHeight, setConsoleHeight] = useState(200);
+  const [devToolsMode, setDevToolsMode] = useState<DevToolsMode>(initialDevToolsMode);
+  const [showDevTools, setShowDevTools] = useState(initialShowDevTools);
+  const [isDevToolsReady, setIsDevToolsReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const historyStack = useRef<string[]>(initialHistoryStack);
@@ -152,16 +163,26 @@ export const PreviewView: React.FC = () => {
         historyIndex: historyIndex.current,
         useProxy: updates.useProxy ?? useProxy,
         showConsole: updates.showConsole ?? showConsole,
+        devToolsMode: updates.devToolsMode ?? devToolsMode,
+        showDevTools: updates.showDevTools ?? showDevTools,
       });
     }
-  }, [tabContext, url, useProxy, showConsole]);
+  }, [tabContext, url, useProxy, showConsole, devToolsMode, showDevTools]);
 
+  const hasValidUrl = url && url !== DEFAULT_URL && url.trim() !== '';
+  
   const iframeSrc = useMemo(() => {
-    if (useProxy && isProxyUrl(url)) {
-      return buildProxyUrl(url);
+    if (!useProxy) {
+      return url;
+    }
+    if (!hasValidUrl) {
+      return 'about:blank';
+    }
+    if (isProxyUrl(url)) {
+      return buildProxyUrl(url, devToolsMode);
     }
     return url;
-  }, [url, useProxy]);
+  }, [url, useProxy, hasValidUrl, devToolsMode]);
 
   const formatElementInfo = useCallback((data: ElementData): string => {
     const lines: string[] = [];
@@ -372,6 +393,21 @@ ${selection.html}
             navigateTo(data.url);
           }
           break;
+          
+        case 'OPENCHAMBER_DEVTOOLS_READY':
+          setIsDevToolsReady(true);
+          break;
+          
+        case 'OPENCHAMBER_DEVTOOLS_ERROR':
+          console.error('[Preview] DevTools error:', data);
+          toast.error('DevTools failed to load');
+          break;
+          
+        case 'OPENCHAMBER_REACT_DETECTED':
+          if (data?.detected) {
+            addConsoleEntry('info', `React detected (${data.method})`);
+          }
+          break;
       }
     };
     
@@ -473,6 +509,37 @@ ${selection.html}
     setShowConsole(newShowConsole);
     persistState({ showConsole: newShowConsole });
   }, [showConsole, persistState]);
+
+  const toggleDevTools = useCallback(() => {
+    if (!useProxy || !isDevToolsReady) {
+      toast.error('DevTools requires proxy mode and page to be loaded');
+      return;
+    }
+    
+    const iframe = iframeRef.current;
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'OPENCHAMBER_DEVTOOLS_TOGGLE' }, '*');
+      setShowDevTools(prev => !prev);
+      persistState({ showDevTools: !showDevTools });
+    }
+  }, [useProxy, isDevToolsReady, showDevTools, persistState]);
+
+  const cycleDevToolsMode = useCallback(() => {
+    const newMode: DevToolsMode = devToolsMode === 'basic' ? 'advanced' : 'basic';
+    setDevToolsMode(newMode);
+    setIsScriptReady(false);
+    setIsDevToolsReady(false);
+    persistState({ devToolsMode: newMode });
+    
+    if (iframeRef.current) {
+      setIsLoading(true);
+      iframeRef.current.src = hasValidUrl && useProxy ? buildProxyUrl(url, newMode) : url;
+    }
+    
+    toast.success(`DevTools mode: ${newMode}`, {
+      description: newMode === 'basic' ? 'Using Eruda (mobile-friendly)' : 'Using Chobitsu (Chrome DevTools Protocol)',
+    });
+  }, [devToolsMode, hasValidUrl, useProxy, url, persistState]);
 
   const clearConsole = useCallback(() => {
     setConsoleEntries([]);
@@ -664,6 +731,52 @@ ${selection.html}
           <TooltipTrigger asChild>
             <button
               type="button"
+              className={cn(
+                buttonClass,
+                showDevTools && 'bg-primary/20 text-primary'
+              )}
+              onClick={toggleDevTools}
+              disabled={!useProxy || !isDevToolsReady}
+              aria-label={showDevTools ? 'Hide DevTools' : 'Show DevTools'}
+            >
+              <RiCodeBoxLine className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {showDevTools 
+              ? 'Hide DevTools' 
+              : useProxy && isDevToolsReady 
+                ? 'Show DevTools (Eruda)' 
+                : 'Enable proxy and wait for page to load'}
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip delayDuration={500}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                buttonClass,
+                devToolsMode === 'advanced' && 'bg-orange-500/20 text-orange-500'
+              )}
+              onClick={cycleDevToolsMode}
+              disabled={!useProxy}
+              aria-label={`DevTools mode: ${devToolsMode}`}
+            >
+              <RiToolsLine className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {devToolsMode === 'basic' 
+              ? 'Basic mode (Eruda) - Click for Advanced' 
+              : 'Advanced mode (Chobitsu) - Click for Basic'}
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip delayDuration={500}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
               className={buttonClass}
               onClick={openExternal}
               aria-label="Open in browser"
@@ -717,6 +830,31 @@ ${selection.html}
               className="absolute inset-0 cursor-crosshair"
               style={{ pointerEvents: 'none' }}
             />
+          )}
+          
+          {useProxy && !hasValidUrl && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background">
+              <div className="text-center space-y-4 max-w-md px-6">
+                <div className="mx-auto w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                  <RiShieldLine className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium text-foreground">
+                    Proxy Mode Enabled
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Enter a URL above to preview with cross-origin support and DevTools.
+                    DevTools mode: <span className="font-medium">{devToolsMode === 'basic' ? 'Eruda' : 'Chobitsu'}</span>
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground/70">
+                  <span className="px-2 py-1 bg-muted/30 rounded">Console</span>
+                  <span className="px-2 py-1 bg-muted/30 rounded">Elements</span>
+                  <span className="px-2 py-1 bg-muted/30 rounded">Network</span>
+                  <span className="px-2 py-1 bg-muted/30 rounded">Sources</span>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

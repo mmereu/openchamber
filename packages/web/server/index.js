@@ -5034,7 +5034,9 @@ async function main(options = {}) {
   });
 
   // ============== PREVIEW PROXY ENDPOINT ==============
-  const { injectScript, stripSecurityHeaders, rewriteUrls } = await import('./lib/preview-proxy.js');
+  // Import both legacy proxy utilities and new DevTools manager
+  const { stripSecurityHeaders, rewriteUrls } = await import('./lib/preview-proxy.js');
+  const { PreviewDevTools } = await import('./lib/preview-devtools/index.js');
 
   app.get('/api/preview-proxy', async (req, res) => {
     const targetUrl = req.query.url;
@@ -5046,6 +5048,12 @@ async function main(options = {}) {
     try {
       const parsedUrl = new URL(targetUrl);
       
+      // Parse DevTools configuration from query params
+      const devToolsConfig = PreviewDevTools.parseConfig(req.query);
+      
+      // Get any auth headers from config
+      const authHeaders = PreviewDevTools.getAuthHeaders(devToolsConfig);
+      
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
 
@@ -5055,6 +5063,7 @@ async function main(options = {}) {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.9',
+          ...authHeaders,
         },
       });
 
@@ -5078,8 +5087,10 @@ async function main(options = {}) {
 
       if (contentType.includes('text/html')) {
         let html = await response.text();
+        // First rewrite URLs to go through proxy
         html = rewriteUrls(html, targetUrl, '/api/preview-proxy');
-        html = injectScript(html, targetUrl);
+        // Then inject DevTools (element picker + eruda/chobitsu + react detection)
+        html = PreviewDevTools.inject(html, targetUrl, devToolsConfig);
         
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
