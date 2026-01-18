@@ -7,6 +7,7 @@ import {
   RiArrowRightSLine,
   RiCloseLine,
   RiFolder6Line,
+  RiFolderOpenLine,
   RiGitBranchLine,
   RiGitRepositoryLine,
   RiMore2Line,
@@ -75,6 +76,7 @@ interface WorktreeItemProps {
   onSelect: () => void;
   onClose?: () => void;
   onRename?: () => void;
+  onOpenInFinder?: () => void;
   isEditing?: boolean;
   editValue?: string;
   onEditChange?: (value: string) => void;
@@ -90,6 +92,7 @@ const WorktreeItem: React.FC<WorktreeItemProps> = ({
   onSelect,
   onClose,
   onRename,
+  onOpenInFinder,
   isEditing,
   editValue,
   onEditChange,
@@ -98,7 +101,7 @@ const WorktreeItem: React.FC<WorktreeItemProps> = ({
 }) => {
   const label = isMain ? 'main' : (worktree.label || worktree.branch || 'worktree');
   const hasChanges = stats.additions > 0 || stats.deletions > 0;
-  const showActions = !isMain && (onClose || onRename);
+  const showActions = onOpenInFinder || (!isMain && (onClose || onRename));
   const inputRef = useRef<HTMLInputElement>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   
@@ -206,6 +209,12 @@ const WorktreeItem: React.FC<WorktreeItemProps> = ({
       </div>
       {showActions && (
         <DropdownMenuContent align="end" className="min-w-[120px]">
+          {onOpenInFinder && (
+            <DropdownMenuItem onClick={onOpenInFinder}>
+              <RiFolderOpenLine className="mr-1.5 h-4 w-4" />
+              Open in Finder
+            </DropdownMenuItem>
+          )}
           {onRename && (
             <DropdownMenuItem onClick={onRename}>
               Rename
@@ -241,6 +250,7 @@ interface ProjectSectionProps {
   onSelectWorktree: (path: string) => void;
   onClose: () => void;
   onCloseWorktree?: (worktreePath: string) => void;
+  onOpenInFinder?: (worktreePath: string) => void;
   onNewWorktreeSession?: () => void;
   onOpenBranchPicker?: () => void;
   isRepo: boolean;
@@ -264,6 +274,7 @@ const ProjectSection: React.FC<ProjectSectionProps> = ({
   onSelectWorktree,
   onClose,
   onCloseWorktree,
+  onOpenInFinder,
   onNewWorktreeSession,
   onOpenBranchPicker,
   isRepo,
@@ -441,6 +452,7 @@ const ProjectSection: React.FC<ProjectSectionProps> = ({
                 onSelect={() => onSelectWorktree(worktree.path)}
                 onClose={!isMain && onCloseWorktree ? () => onCloseWorktree(worktree.path) : undefined}
                 onRename={!isMain && worktreePath ? () => onStartRename(worktreePath, currentLabel) : undefined}
+                onOpenInFinder={onOpenInFinder ? () => onOpenInFinder(worktree.path) : undefined}
                 isEditing={isEditingThis}
                 editValue={isEditingThis ? editValue : undefined}
                 onEditChange={onEditChange}
@@ -666,6 +678,25 @@ export const WorktreeSidebar: React.FC<WorktreeSidebarProps> = () => {
       worktree: worktreeMetadata,
     });
   }, [availableWorktreesByProject, sessions]);
+
+  const handleOpenInFinder = useCallback(async (worktreePath: string) => {
+    const normalizedPath = normalizePath(worktreePath);
+    if (!normalizedPath) return;
+
+    if (isDesktopRuntime && window.opencodeDesktop?.openExternal) {
+      const result = await window.opencodeDesktop.openExternal(`file://${normalizedPath}`);
+      if (!result.success) {
+        toast.error('Failed to open folder');
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(normalizedPath);
+        toast.success('Path copied to clipboard');
+      } catch {
+        toast.error('Could not copy path');
+      }
+    }
+  }, [isDesktopRuntime]);
 
   const handleOpenBranchPicker = useCallback(() => {
     setBranchPickerOpen(true);
@@ -979,6 +1010,7 @@ export const WorktreeSidebar: React.FC<WorktreeSidebarProps> = () => {
               onSelectWorktree={(path) => handleSelectWorktree(project.id, path)}
               onClose={() => handleCloseProject(project.id)}
               onCloseWorktree={handleCloseWorktree}
+              onOpenInFinder={handleOpenInFinder}
               onNewWorktreeSession={() => handleNewWorktreeSession(project.id)}
               onOpenBranchPicker={handleOpenBranchPicker}
               isRepo={isRepo}

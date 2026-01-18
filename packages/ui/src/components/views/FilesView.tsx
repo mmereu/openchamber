@@ -461,17 +461,17 @@ export const FilesView: React.FC = () => {
     inFlightDirsRef.current.add(normalizedDir);
 
     try {
-      // Use gitignore filtering for both desktop and web
       let entries: Array<{ name: string; path: string; isDirectory: boolean }>;
+      const respectGitignore = !showHiddenFiles;
       if (runtime.isDesktop) {
-        const result = await files.listDirectory(normalizedDir, { respectGitignore: true });
+        const result = await files.listDirectory(normalizedDir, { respectGitignore });
         entries = result.entries.map((entry) => ({
           name: entry.name,
           path: entry.path,
           isDirectory: entry.isDirectory,
         }));
       } else {
-        const result = await opencodeClient.listLocalDirectory(normalizedDir, { respectGitignore: true });
+        const result = await opencodeClient.listLocalDirectory(normalizedDir, { respectGitignore });
         entries = result.map((entry) => ({
           name: entry.name,
           path: entry.path,
@@ -493,7 +493,7 @@ export const FilesView: React.FC = () => {
       inFlightDirsRef.current = new Set(inFlightDirsRef.current);
       inFlightDirsRef.current.delete(normalizedDir);
     }
-  }, [files, mapDirectoryEntries, runtime.isDesktop]);
+  }, [files, mapDirectoryEntries, runtime.isDesktop, showHiddenFiles]);
 
   const refreshRoot = React.useCallback(async () => {
     const normalizedRoot = normalizePath(currentDirectory.trim());
@@ -523,6 +523,14 @@ export const FilesView: React.FC = () => {
     setDesktopImageSrc('');
     setShowMobilePageContent(false);
   }, [currentDirectory, refreshRoot]);
+
+  const showHiddenFilesRef = React.useRef(showHiddenFiles);
+  React.useEffect(() => {
+    if (showHiddenFilesRef.current !== showHiddenFiles) {
+      showHiddenFilesRef.current = showHiddenFiles;
+      void refreshRoot();
+    }
+  }, [showHiddenFiles, refreshRoot]);
 
   const fuzzyScore = React.useCallback((query: string, candidate: string): number | null => {
     const q = query.trim().toLowerCase();
