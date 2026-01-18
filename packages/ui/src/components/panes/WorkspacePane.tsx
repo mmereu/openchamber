@@ -30,12 +30,15 @@ const WorkspacePaneComponent: React.FC<WorkspacePaneProps> = ({
   className,
   style,
   isLastPane = false,
+  isCollapsed = false,
 }) => {
   const resolvedWorktreeId = worktreeId ?? 'global';
   
   const {
     leftPane,
     rightPane,
+    rightBottomPane,
+    rightBottomCollapsed,
     focusedPane,
     setFocusedPane,
     setActiveTab,
@@ -45,12 +48,15 @@ const WorkspacePaneComponent: React.FC<WorkspacePaneProps> = ({
     openChatSession,
     moveTab,
     updateTabMetadata,
+    setRightBottomCollapsed,
   } = usePanes(worktreeId);
 
   const { setCurrentSession, createSession } = useSessionStore();
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const paneState = paneId === 'left' ? leftPane : rightPane;
+  const paneState = paneId === 'left' ? leftPane : paneId === 'right' ? rightPane : rightBottomPane;
+  const isBottomPane = paneId === 'rightBottom';
+  const effectiveCollapsed = isBottomPane ? rightBottomCollapsed : isCollapsed;
 
   const handleFocus = useCallback(() => {
     setFocusedPane(paneId);
@@ -58,14 +64,23 @@ const WorkspacePaneComponent: React.FC<WorkspacePaneProps> = ({
 
   const handleActivateTab = useCallback(
     (tabId: string) => {
+      if (isBottomPane && rightBottomCollapsed) {
+        setRightBottomCollapsed(false);
+      }
       setActiveTab(paneId, tabId);
       const tab = paneState.tabs.find((t) => t.id === tabId);
       if (tab?.type === 'chat' && tab.sessionId) {
         setCurrentSession(tab.sessionId);
       }
     },
-    [paneId, setActiveTab, paneState.tabs, setCurrentSession]
+    [paneId, setActiveTab, paneState.tabs, setCurrentSession, isBottomPane, rightBottomCollapsed, setRightBottomCollapsed]
   );
+
+  const handleToggleCollapse = useCallback(() => {
+    if (isBottomPane) {
+      setRightBottomCollapsed(!rightBottomCollapsed);
+    }
+  }, [isBottomPane, rightBottomCollapsed, setRightBottomCollapsed]);
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
@@ -262,11 +277,16 @@ const WorkspacePaneComponent: React.FC<WorkspacePaneProps> = ({
           setFocusedPane(paneId);
         }}
         isLastPane={isLastPane}
+        isCollapsible={isBottomPane}
+        isCollapsed={effectiveCollapsed}
+        onToggleCollapse={handleToggleCollapse}
       />
 
-      <div className="flex-1 overflow-hidden relative">
-        <ErrorBoundary>{renderContent(activeTab)}</ErrorBoundary>
-      </div>
+      {!effectiveCollapsed && (
+        <div className="flex-1 overflow-hidden relative">
+          <ErrorBoundary>{renderContent(activeTab)}</ErrorBoundary>
+        </div>
+      )}
 
       {isDragOver && (
         <div className="absolute inset-0 bg-primary/5 pointer-events-none flex items-center justify-center">

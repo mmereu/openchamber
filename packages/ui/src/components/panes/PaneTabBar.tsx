@@ -1,6 +1,8 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
 import {
   RiAddLine,
+  RiArrowDownSLine,
+  RiArrowUpSLine,
   RiCloseLine,
   RiQuestionLine,
   RiSideBarLine,
@@ -176,6 +178,9 @@ interface PaneTabBarProps {
   onAddTab: (type: PaneTabType) => void;
   onMoveTabFromPane?: (sourcePane: PaneId, tabId: string) => void;
   isLastPane?: boolean;
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const PaneTabBar: React.FC<PaneTabBarProps> = ({
@@ -188,6 +193,9 @@ export const PaneTabBar: React.FC<PaneTabBarProps> = ({
   onAddTab,
   onMoveTabFromPane,
   isLastPane = false,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
   const [dragOverTabId, setDragOverTabId] = useState<string | null>(null);
@@ -318,6 +326,23 @@ export const PaneTabBar: React.FC<PaneTabBarProps> = ({
       onDragOver={handleBarDragOver}
       onDrop={handleBarDrop}
     >
+      {isCollapsible && (
+        <div className="flex items-stretch shrink-0 border-r" style={{ borderColor: 'var(--interactive-border)' }}>
+          <Tooltip delayDuration={500}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className={actionButtonClass}
+                aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
+              >
+                {isCollapsed ? <RiArrowUpSLine className="h-4 w-4" /> : <RiArrowDownSLine className="h-4 w-4" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{isCollapsed ? 'Expand Panel' : 'Collapse Panel'}</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
       {showSidebarToggle && (
         <div className="flex items-stretch shrink-0 border-r" style={{ borderColor: 'var(--interactive-border)' }}>
           <Tooltip delayDuration={500}>
