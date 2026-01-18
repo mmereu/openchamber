@@ -345,7 +345,7 @@ export const MainLayout: React.FC = () => {
                                                     style={{ borderLeft: '1px solid var(--interactive-border)' }}
                                                 />
                                                 <div 
-                                                    className="shrink-0 flex flex-col overflow-hidden"
+                                                    className="shrink-0 flex flex-col"
                                                     style={{ width: rightPaneWidth }}
                                                 >
                                                     <WorkspacePane
@@ -354,21 +354,23 @@ export const MainLayout: React.FC = () => {
                                                         className="flex-1 min-h-0"
                                                         isLastPane={!rightBottomVisible}
                                                     />
-                                                    {rightBottomVisible && !rightBottomCollapsed && (
+                                                    {rightBottomVisible && (
                                                         <>
-                                                            <div
-                                                                className={cn(
-                                                                    'h-1 cursor-row-resize hover:bg-primary/20 transition-colors shrink-0',
-                                                                    isVerticalResizing && 'bg-primary/30'
-                                                                )}
-                                                                onMouseDown={handleVerticalResizeStart}
-                                                                style={{ borderTop: '1px solid var(--interactive-border)' }}
-                                                            />
+                                                            {!rightBottomCollapsed && (
+                                                                <div
+                                                                    className={cn(
+                                                                        'h-1 cursor-row-resize hover:bg-primary/20 transition-colors shrink-0',
+                                                                        isVerticalResizing && 'bg-primary/30'
+                                                                    )}
+                                                                    onMouseDown={handleVerticalResizeStart}
+                                                                    style={{ borderTop: '1px solid var(--interactive-border)' }}
+                                                                />
+                                                            )}
                                                             <WorkspacePane
                                                                 paneId="rightBottom"
                                                                 worktreeId={worktreeId}
                                                                 className="shrink-0"
-                                                                style={{ height: rightBottomHeight }}
+                                                                style={{ height: rightBottomCollapsed ? 48 : rightBottomHeight }}
                                                                 isLastPane={true}
                                                             />
                                                         </>
