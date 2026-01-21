@@ -956,6 +956,24 @@ export const WorktreeSidebar: React.FC<WorktreeSidebarProps> = () => {
           <TooltipContent side="bottom">Add Project</TooltipContent>
         </Tooltip>
       )}
+      {sidebarMode === 'github' && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                // Dispatch custom event to trigger add repo in GitHubReposSidebar
+                const event = new CustomEvent('github-repos-add-trigger');
+                document.dispatchEvent(event);
+              }}
+              className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            >
+              <RiAddLine className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Add Repository</TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 
@@ -1041,7 +1059,14 @@ export const WorktreeSidebar: React.FC<WorktreeSidebarProps> = () => {
   }
 
   if (sidebarMode === 'github') {
-    return <GitHubReposSidebar />;
+    return (
+      <div className="flex flex-col h-full">
+        {renderSidebarHeader()}
+        <div className="flex-1 overflow-hidden">
+          <GitHubReposSidebar />
+        </div>
+      </div>
+    );
   }
 
   if (normalizedProjects.length === 0) {

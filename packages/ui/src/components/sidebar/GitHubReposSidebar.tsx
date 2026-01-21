@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { RiAddLine, RiCloseLine, RiGitRepositoryLine } from '@remixicon/react';
+import { useState, useCallback, useEffect } from 'react';
+import { RiCloseLine, RiGitRepositoryLine } from '@remixicon/react';
 import { useGitHubReposStore } from '@/stores/useGitHubReposStore';
 import { usePanes } from '@/stores/usePaneStore';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
@@ -11,6 +11,12 @@ export function GitHubReposSidebar() {
   const [isAddingRepo, setIsAddingRepo] = useState(false);
   const [ownerInput, setOwnerInput] = useState('');
   const [repoInput, setRepoInput] = useState('');
+
+  useEffect(() => {
+    const handleAddTrigger = () => setIsAddingRepo(true);
+    document.addEventListener('github-repos-add-trigger', handleAddTrigger);
+    return () => document.removeEventListener('github-repos-add-trigger', handleAddTrigger);
+  }, []);
 
   const handleAddRepo = useCallback(() => {
     const owner = ownerInput.trim();
@@ -35,19 +41,7 @@ export function GitHubReposSidebar() {
   }, [addTab]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">GitHub Repos</h2>
-        <button
-          onClick={() => setIsAddingRepo(true)}
-          className="rounded-md p-1 hover:bg-accent"
-          title="Add Repository"
-        >
-          <RiAddLine className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex h-full flex-col overflow-y-auto">
         {isAddingRepo && (
           <div className="border-b border-border p-4">
             <div className="space-y-2">
@@ -130,7 +124,6 @@ export function GitHubReposSidebar() {
             ))}
           </div>
         )}
-      </div>
     </div>
   );
 }

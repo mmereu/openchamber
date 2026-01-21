@@ -82,17 +82,6 @@ interface ConsoleEntry {
   timestamp: number;
 }
 
-function isProxyUrl(targetUrl: string): boolean {
-  try {
-    const parsed = new URL(targetUrl);
-    const currentOrigin = window.location.origin;
-    const targetOrigin = parsed.origin;
-    return currentOrigin !== targetOrigin;
-  } catch {
-    return false;
-  }
-}
-
 type DevToolsMode = 'basic' | 'advanced';
 
 function buildProxyUrl(targetUrl: string, devToolsMode: DevToolsMode = 'basic'): string {
@@ -178,10 +167,9 @@ export const PreviewView: React.FC = () => {
     if (!hasValidUrl) {
       return 'about:blank';
     }
-    if (isProxyUrl(url)) {
-      return buildProxyUrl(url, devToolsMode);
-    }
-    return url;
+    // When proxy is ON and we have a valid URL, ALWAYS use proxy
+    // (regardless of whether it's cross-origin or same-origin)
+    return buildProxyUrl(url, devToolsMode);
   }, [url, useProxy, hasValidUrl, devToolsMode]);
 
   const formatElementInfo = useCallback((data: ElementData): string => {

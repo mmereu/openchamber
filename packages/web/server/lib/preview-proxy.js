@@ -509,25 +509,89 @@ function stripSecurityHeaders(headers) {
  * @param {string} html - The HTML content
  * @param {string} baseUrl - The base URL of the original page
  * @param {string} proxyBase - The proxy endpoint base URL
+ * @param {string} [proxyServerOrigin] - The origin of the proxy server (for same-origin detection)
  * @returns {string} - HTML with rewritten URLs
  */
-function rewriteUrls(html, baseUrl, proxyBase) {
+function rewriteUrls(html, baseUrl, proxyBase, proxyServerOrigin) {
   const base = new URL(baseUrl);
   const baseOrigin = base.origin;
   const basePath = base.pathname.replace(/[^/]*$/, '');
   
-  // Add <base> tag to handle relative URLs for assets (CSS, images, etc.)
-  const baseTag = `<base href="${baseOrigin}${basePath}">`;
-  
   let result = html;
   
-  // Add base tag
-  if (result.includes('<head>')) {
-    result = result.replace('<head>', `<head>${baseTag}`);
-  } else if (result.includes('<html>')) {
-    result = result.replace('<html>', `<html><head>${baseTag}</head>`);
+  let shouldInjectBaseTag = true;
+  if (proxyServerOrigin) {
+    try {
+      const proxyHost = new URL(proxyServerOrigin).hostname;
+      const targetHost = new URL(baseOrigin).hostname;
+      if (proxyHost === targetHost) {
+        shouldInjectBaseTag = false;
+      }
+    } catch (e) {
+      shouldInjectBaseTag = true;
+    }
+  }
+  
+  if (shouldInjectBaseTag) {
+    const baseTag = `<base href="${baseOrigin}${basePath}">`;
+    
+    if (result.includes('<head>')) {
+      result = result.replace('<head>', `<head>${baseTag}`);
+    } else if (result.includes('<html>')) {
+      result = result.replace('<html>', `<html><head>${baseTag}</head>`);
+    } else {
+      result = baseTag + result;
+    }
   } else {
-    result = baseTag + result;
+    const makeAbsoluteUrl = (url) => {
+      try {
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          return url;
+        } else if (url.startsWith('//')) {
+          return base.protocol + url;
+        } else if (url.startsWith('/')) {
+          return baseOrigin + url;
+        } else if (url.startsWith('data:') || url.startsWith('blob:')) {
+          return url;
+        } else {
+          return baseOrigin + basePath + url;
+        }
+      } catch {
+        return url;
+      }
+    };
+    
+    result = result.replace(
+      /<script\s+([^>]*?)src\s*=\s*["']([^"']+)["']([^>]*)>/gi,
+      (match, before, src, after) => {
+        const absoluteSrc = makeAbsoluteUrl(src);
+        return `<script ${before}src="${absoluteSrc}"${after}>`;
+      }
+    );
+    
+    result = result.replace(
+      /<link\s+([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*)>/gi,
+      (match, before, href, after) => {
+        const absoluteHref = makeAbsoluteUrl(href);
+        return `<link ${before}href="${absoluteHref}"${after}>`;
+      }
+    );
+    
+    result = result.replace(
+      /<img\s+([^>]*?)src\s*=\s*["']([^"']+)["']([^>]*)>/gi,
+      (match, before, src, after) => {
+        const absoluteSrc = makeAbsoluteUrl(src);
+        return `<img ${before}src="${absoluteSrc}"${after}>`;
+      }
+    );
+    
+    result = result.replace(
+      /<source\s+([^>]*?)src\s*=\s*["']([^"']+)["']([^>]*)>/gi,
+      (match, before, src, after) => {
+        const absoluteSrc = makeAbsoluteUrl(src);
+        return `<source ${before}src="${absoluteSrc}"${after}>`;
+      }
+    );
   }
   
   // Rewrite anchor href attributes to go through proxy

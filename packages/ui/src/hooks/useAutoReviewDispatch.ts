@@ -21,7 +21,6 @@ export function useAutoReviewDispatch() {
   
   const sessionMemoryState = useMessageStore((state) => state.sessionMemoryState);
   const sendMessage = useSessionStore((state) => state.sendMessage);
-  const sessions = useSessionStore((state) => state.sessions);
   
   const { currentProviderId, currentModelId, currentAgentName, currentVariant } = useConfigStore();
   const getSessionAgentSelection = useContextStore((state) => state.getSessionAgentSelection);

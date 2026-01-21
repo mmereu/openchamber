@@ -17,6 +17,8 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useAppRunnerStore } from '@/stores/useAppRunnerStore';
 import type { PaneId, PaneTab, PaneTabType } from '@/stores/usePaneStore';
+import { usePanes } from '@/stores/usePaneStore';
+import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { SessionHistoryDropdown } from './SessionHistoryDropdown';
 import { McpDropdown } from '@/components/mcp/McpDropdown';
 import { getTabIcon, getTabAddLabel, getTabLabel } from '@/constants/tabs';
@@ -218,6 +220,9 @@ export const PaneTabBar: React.FC<PaneTabBarProps> = ({
   const appRunnerUrls = useAppRunnerStore((s) => s.detectedUrls);
   const [showUrlMenu, setShowUrlMenu] = useState(false);
   const urlButtonRef = useRef<HTMLButtonElement>(null);
+  
+  const currentDirectory = useDirectoryStore((s) => s.currentDirectory);
+  const { addTab } = usePanes(currentDirectory);
 
   const sessionTitleMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -472,7 +477,11 @@ export const PaneTabBar: React.FC<PaneTabBarProps> = ({
                             key={url}
                             type="button"
                             onClick={() => {
-                              window.open(url, '_blank');
+                              addTab('right', {
+                                type: 'preview',
+                                title: `Preview :${port}`,
+                                metadata: { url },
+                              });
                               setShowUrlMenu(false);
                             }}
                             className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground"

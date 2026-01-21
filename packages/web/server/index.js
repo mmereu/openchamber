@@ -5433,9 +5433,8 @@ async function main(options = {}) {
 
       if (contentType.includes('text/html')) {
         let html = await response.text();
-        // First rewrite URLs to go through proxy
-        html = rewriteUrls(html, targetUrl, '/api/preview-proxy');
-        // Then inject DevTools (element picker + eruda/chobitsu + react detection)
+        const proxyServerOrigin = `${req.protocol}://${req.get('host')}`;
+        html = rewriteUrls(html, targetUrl, '/api/preview-proxy', proxyServerOrigin);
         html = PreviewDevTools.inject(html, targetUrl, devToolsConfig);
         
         res.set('Content-Type', 'text/html; charset=utf-8');
