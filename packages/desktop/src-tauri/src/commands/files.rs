@@ -625,16 +625,45 @@ async fn resolve_creatable_path(
 
     let parent = absolute.parent().ok_or(FsCommandError::NotDirectory)?;
 
-    let canonical_parent = fs::canonicalize(parent)
-        .await
-        .map_err(FsCommandError::from)?;
+    // Try to canonicalize the parent, but if it doesn't exist yet, check against
+    // the workspace roots using the non-canonicalized path
+    match fs::canonicalize(parent).await {
+        Ok(canonical_parent) => {
+            if !workspace_roots.is_empty()
+                && !workspace_roots
+                    .iter()
+                    .any(|root| canonical_parent.starts_with(root))
+            {
+                return Err(FsCommandError::OutsideWorkspace);
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // Parent doesn't exist yet - check if the path would be within a workspace root
+            // This allows creating nested directories like ~/openchamber/workspaces/repo-name
+            // where ~/openchamber might not exist yet
+            if !workspace_roots.is_empty() {
+                let parent_path = PathBuf::from(parent);
+                let is_within_workspace = workspace_roots.iter().any(|root| {
+                    // Check if parent starts with root (for existing canonicalized roots)
+                    parent_path.starts_with(root) ||
+                    // Check if root starts with parent (parent is ancestor of an allowed root)
+                    root.starts_with(&parent_path) ||
+                    // Check if they share a common prefix path that would allow creation
+                    // This handles the case where we're creating ~/openchamber when
+                    // ~/openchamber/workspaces is in the workspace_roots
+                    {
+                        let parent_str = parent_path.to_string_lossy();
+                        let root_str = root.to_string_lossy();
+                        root_str.starts_with(parent_str.as_ref())
+                    }
+                });
 
-    if !workspace_roots.is_empty()
-        && !workspace_roots
-            .iter()
-            .any(|root| canonical_parent.starts_with(root))
-    {
-        return Err(FsCommandError::OutsideWorkspace);
+                if !is_within_workspace {
+                    return Err(FsCommandError::OutsideWorkspace);
+                }
+            }
+        }
+        Err(e) => return Err(FsCommandError::from(e)),
     }
 
     Ok(absolute)
@@ -691,6 +720,20 @@ async fn resolve_workspace_roots(settings: &SettingsStore) -> (Vec<PathBuf>, Opt
             if let Ok(canonicalized) = fs::canonicalize(last_dir).await {
                 default_root = Some(canonicalized);
             }
+        }
+    }
+
+    // Always allow access to the global openchamber workspaces directory for worktrees
+    // This is where worktrees are created: ~/openchamber/workspaces/<repo-name>/<worktree-slug>
+    if let Some(home) = dirs::home_dir() {
+        let openchamber_workspaces = home.join("openchamber").join("workspaces");
+        // Try to canonicalize if the directory exists, otherwise use the path directly
+        // This allows creating the directory if it doesn't exist yet
+        if let Ok(canonicalized) = fs::canonicalize(&openchamber_workspaces).await {
+            roots.push(canonicalized);
+        } else {
+            // Directory doesn't exist yet - add the raw path so it can be created
+            roots.push(openchamber_workspaces);
         }
     }
 
