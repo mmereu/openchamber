@@ -145,6 +145,12 @@ export const ChatContainer: React.FC = () => {
         }
     }, [scrollRef]);
 
+    // Track sessions we've already scrolled to prevent re-scrolling on message updates
+    const scrolledSessionsRef = React.useRef<Set<string>>(new Set());
+    const loadingSessionIdRef = React.useRef<string | null>(null);
+
+    // Effect: Load messages and scroll to bottom on session switch
+    // This only triggers message loading when switching to a session without messages
     React.useEffect(() => {
         if (!currentSessionId) {
             return;
@@ -153,25 +159,50 @@ export const ChatContainer: React.FC = () => {
         const hasSessionMessages = messages.has(currentSessionId);
         const existingMessages = hasSessionMessages ? messages.get(currentSessionId) ?? [] : [];
 
+        // If we already have messages and already scrolled for this session, do nothing
+        // This prevents re-scrolling when other sessions' messages update
         if (existingMessages.length > 0) {
+            if (scrolledSessionsRef.current.has(currentSessionId)) {
+                return; // Already scrolled for this session
+            }
+            // First time seeing this session with messages - scroll to bottom
+            scrolledSessionsRef.current.add(currentSessionId);
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    scrollToBottom({ instant: true });
+                });
+            });
             return;
         }
+
+        loadingSessionIdRef.current = currentSessionId;
 
         const load = async () => {
             try {
                 await loadMessages(currentSessionId);
             } finally {
+                // Check if we're still on the same session (prevent race condition)
+                if (loadingSessionIdRef.current !== currentSessionId) {
+                    return;
+                }
+
+                // Mark this session as scrolled
+                scrolledSessionsRef.current.add(currentSessionId);
+
                 const currentPhase = sessionActivityPhase?.get(currentSessionId) ?? 'idle';
                 const isActivePhase = currentPhase === 'busy' || currentPhase === 'cooldown';
                 // When pinned and active, scroll is already maintained automatically
                 const shouldSkipScroll = isActivePhase && isPinned;
 
                 if (!shouldSkipScroll) {
+                    // Use double RAF to ensure messages are rendered in DOM before scrolling
                     if (typeof window === 'undefined') {
-                        scrollToBottom();
+                        scrollToBottom({ instant: true });
                     } else {
                         window.requestAnimationFrame(() => {
-                            scrollToBottom();
+                            window.requestAnimationFrame(() => {
+                                scrollToBottom({ instant: true });
+                            });
                         });
                     }
                 }
@@ -180,6 +211,19 @@ export const ChatContainer: React.FC = () => {
 
         void load();
     }, [currentSessionId, isPinned, loadMessages, messages, scrollToBottom, sessionActivityPhase]);
+
+    // Clear the scrolled state when session changes to allow re-scroll on next visit
+    React.useEffect(() => {
+        // When session changes, allow re-scroll for all OTHER sessions
+        // Keep current session's scrolled state to prevent double-scroll
+        if (currentSessionId && scrolledSessionsRef.current.size > 1) {
+            const newScrolled = new Set<string>();
+            if (scrolledSessionsRef.current.has(currentSessionId)) {
+                newScrolled.add(currentSessionId);
+            }
+            scrolledSessionsRef.current = newScrolled;
+        }
+    }, [currentSessionId]);
 
     if (!currentSessionId && !draftOpen) {
         return (

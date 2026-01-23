@@ -242,6 +242,34 @@ const upsertMessageSessionIndex = (source: Map<string, string>, messageId: strin
     return next;
 };
 
+// Batch version to avoid O(n²) Map copying when processing multiple messages
+const upsertMultipleMessageSessionIndex = (
+    source: Map<string, string>,
+    messages: Array<{ info: { id?: unknown } }>,
+    sessionId: string
+): Map<string, string> => {
+    // Collect message IDs that need updating
+    const idsToUpdate: string[] = [];
+    for (const message of messages) {
+        const id = (message?.info as { id?: unknown })?.id;
+        if (typeof id === "string" && id.length > 0 && source.get(id) !== sessionId) {
+            idsToUpdate.push(id);
+        }
+    }
+
+    // If no updates needed, return original Map (preserves reference)
+    if (idsToUpdate.length === 0) {
+        return source;
+    }
+
+    // Create ONE copy and apply all updates - O(n) instead of O(n²)
+    const next = new Map(source);
+    for (const id of idsToUpdate) {
+        next.set(id, sessionId);
+    }
+    return next;
+};
+
 const removeMessageSessionIndexEntries = (source: Map<string, string>, ids: Iterable<string>) => {
     const next = new Map(source);
     let mutated = false;
@@ -536,16 +564,11 @@ export const useMessageStore = create<MessageStore>()(
                             }
                         }
 
+                        // Use batch update to avoid O(n²) Map copying
                         const targetIndex = result.messageSessionIndex ?? state.messageSessionIndex;
-                        let indexAccumulator = targetIndex;
-                        mergedMessages.forEach((message) => {
-                            const id = (message?.info as { id?: unknown })?.id;
-                            if (typeof id === "string" && id.length > 0) {
-                                indexAccumulator = upsertMessageSessionIndex(indexAccumulator, id, sessionId);
-                            }
-                        });
-                        if (indexAccumulator !== targetIndex) {
-                            result.messageSessionIndex = indexAccumulator;
+                        const updatedIndex = upsertMultipleMessageSessionIndex(targetIndex, mergedMessages, sessionId);
+                        if (updatedIndex !== targetIndex) {
+                            result.messageSessionIndex = updatedIndex;
                         }
 
                         return result;
@@ -2321,16 +2344,11 @@ export const useMessageStore = create<MessageStore>()(
                             }
                         }
 
+                        // Use batch update to avoid O(n²) Map copying
                         const targetIndex = result.messageSessionIndex ?? state.messageSessionIndex;
-                        let indexAccumulator = targetIndex;
-                        trimmedMessages.forEach((message) => {
-                            const id = (message?.info as { id?: unknown })?.id;
-                            if (typeof id === "string" && id.length > 0) {
-                                indexAccumulator = upsertMessageSessionIndex(indexAccumulator, id, sessionId);
-                            }
-                        });
-                        if (indexAccumulator !== targetIndex) {
-                            result.messageSessionIndex = indexAccumulator;
+                        const updatedIndex = upsertMultipleMessageSessionIndex(targetIndex, trimmedMessages, sessionId);
+                        if (updatedIndex !== targetIndex) {
+                            result.messageSessionIndex = updatedIndex;
                         }
 
                         return result;

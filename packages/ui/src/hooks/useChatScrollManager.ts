@@ -229,7 +229,7 @@ export const useChatScrollManager = ({
         };
     }, [handleScrollEvent]);
 
-    // Session switch - always start pinned at bottom
+    // Session switch - reset state but DON'T scroll yet (let ChatContainer handle scroll after messages load)
     useIsomorphicLayoutEffect(() => {
         if (!currentSessionId || currentSessionId === lastSessionIdRef.current) {
             return;
@@ -238,16 +238,14 @@ export const useChatScrollManager = ({
         lastSessionIdRef.current = currentSessionId;
         MessageFreshnessDetector.getInstance().recordSessionStart(currentSessionId);
 
-        // Always start pinned at bottom on session switch
+        // Reset pinned state to true - we'll be pinned at bottom when messages load
         updatePinnedState(true);
         setShowScrollButton(false);
+        lastScrollTopRef.current = 0;
 
-        const container = scrollRef.current;
-        if (container) {
-            markProgrammaticScroll();
-            scrollToBottomInternal({ instant: true });
-        }
-    }, [currentSessionId, markProgrammaticScroll, scrollToBottomInternal, updatePinnedState]);
+        // DON'T scroll here - let ChatContainer scroll after messages are actually loaded
+        // This prevents the race condition where we scroll before messages render
+    }, [currentSessionId, updatePinnedState]);
 
     // Maintain pin-to-bottom when content changes
     React.useEffect(() => {

@@ -5,7 +5,7 @@ import { isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
 import { AboutSettings } from './AboutSettings';
 import { cn } from '@/lib/utils';
 
-export type OpenChamberSection = 'visual' | 'chat' | 'sessions' | 'layout' | 'git' | 'notifications' | 'appRunner';
+export type OpenChamberSection = 'visual' | 'chat' | 'sessions' | 'layout' | 'git' | 'notifications' | 'appRunner' | 'servers';
 
 interface OpenChamberSidebarProps {
   selectedSection: OpenChamberSection;
@@ -58,6 +58,12 @@ const OPENCHAMBER_SECTION_GROUPS: SectionGroup[] = [
     id: 'appRunner',
     label: 'App Runner',
     items: ['Dev Server', 'Command'],
+    hideInVSCode: true,
+  },
+  {
+    id: 'servers',
+    label: 'Servers',
+    items: ['Processes', 'Cleanup'],
     hideInVSCode: true,
   },
 ];

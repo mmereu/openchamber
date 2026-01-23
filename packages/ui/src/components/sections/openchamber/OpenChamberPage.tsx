@@ -9,6 +9,7 @@ import { WorktreeSectionContent } from './WorktreeSectionContent';
 import { NotificationSettings } from './NotificationSettings';
 import { LayoutSettings } from './LayoutSettings';
 import { AppRunnerSettings } from './AppRunnerSettings';
+import { ServerManagementSettings } from './ServerManagementSettings';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import { useDeviceInfo } from '@/lib/device';
 import { isWebRuntime } from '@/lib/desktop';
@@ -64,6 +65,8 @@ export const OpenChamberPage: React.FC<OpenChamberPageProps> = ({ section }) => 
                 return <NotificationSectionContent />;
             case 'appRunner':
                 return <AppRunnerSectionContent />;
+            case 'servers':
+                return <ServersSectionContent />;
             default:
                 return null;
         }
@@ -136,4 +139,9 @@ const NotificationSectionContent: React.FC = () => {
 // App Runner section: Dev server with start/stop controls
 const AppRunnerSectionContent: React.FC = () => {
     return <AppRunnerSettings />;
+};
+
+// Servers section: Process management and cleanup
+const ServersSectionContent: React.FC = () => {
+    return <ServerManagementSettings />;
 };

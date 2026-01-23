@@ -300,6 +300,29 @@ async fn desktop_restart_opencode(state: tauri::State<'_, DesktopRuntime>) -> Re
         .map_err(|err| err.to_string())
 }
 
+/// Get information about all running opencode serve processes
+#[tauri::command]
+fn desktop_get_running_servers() -> Vec<opencode_manager::OpenCodeProcessInfo> {
+    opencode_manager::get_running_servers()
+}
+
+/// Clean up orphan opencode processes (except the current one managed by this app)
+#[tauri::command]
+async fn desktop_cleanup_orphan_processes(
+    state: tauri::State<'_, DesktopRuntime>,
+) -> Result<usize, String> {
+    // Get the PID of our managed child process to exclude it
+    let exclude_pid = if state.opencode.is_child_running().await.unwrap_or(false) {
+        // We can't easily get the child PID, so we'll use port-based exclusion
+        // The cleanup function will skip processes we're managing
+        None
+    } else {
+        None
+    };
+
+    Ok(opencode_manager::cleanup_orphan_processes(exclude_pid))
+}
+
 #[cfg(feature = "devtools")]
 #[tauri::command]
 async fn desktop_open_devtools(window: WebviewWindow) -> Result<(), String> {
@@ -703,6 +726,15 @@ fn main() {
                 let _ = window.set_focus();
             }
 
+            // Clean up orphan opencode processes from previous sessions
+            let orphans_killed = opencode_manager::cleanup_orphan_processes(None);
+            if orphans_killed > 0 {
+                info!(
+                    "[desktop:startup] Cleaned up {} orphan opencode processes",
+                    orphans_killed
+                );
+            }
+
             let runtime = DesktopRuntime::initialize_sync()?;
             app.manage(runtime.clone());
 
@@ -827,6 +859,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             desktop_server_info,
             desktop_restart_opencode,
+            desktop_get_running_servers,
+            desktop_cleanup_orphan_processes,
             #[cfg(feature = "devtools")]
             desktop_open_devtools,
             load_settings,

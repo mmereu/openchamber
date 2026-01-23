@@ -29,6 +29,13 @@ export type DesktopServerInfo = {
   cliAvailable: boolean;
 };
 
+export type OpenCodeProcessInfo = {
+  pid: number;
+  port: number | null;
+  command: string;
+  started: string;
+};
+
 export type SkillCatalogConfig = {
   id: string;
   label: string;
@@ -94,6 +101,8 @@ export type DesktopApi = {
   downloadUpdate?: (onProgress?: (progress: UpdateProgress) => void) => Promise<void>;
   restartToUpdate?: () => Promise<void>;
   openExternal?: (url: string) => Promise<{ success: boolean; error?: string }>;
+  getRunningServers?: () => Promise<OpenCodeProcessInfo[]>;
+  cleanupOrphanProcesses?: () => Promise<number>;
 };
 
 export const isDesktopRuntime = (): boolean =>
@@ -321,3 +330,28 @@ export const restartToApplyUpdate = async (): Promise<boolean> => {
   }
 };
 
+export const getRunningServers = async (): Promise<OpenCodeProcessInfo[]> => {
+  const api = getDesktopApi();
+  if (!api || !api.getRunningServers) {
+    return [];
+  }
+  try {
+    return await api.getRunningServers();
+  } catch (error) {
+    console.warn('Failed to get running servers', error);
+    return [];
+  }
+};
+
+export const cleanupOrphanProcesses = async (): Promise<number> => {
+  const api = getDesktopApi();
+  if (!api || !api.cleanupOrphanProcesses) {
+    return 0;
+  }
+  try {
+    return await api.cleanupOrphanProcesses();
+  } catch (error) {
+    console.warn('Failed to cleanup orphan processes', error);
+    return 0;
+  }
+};

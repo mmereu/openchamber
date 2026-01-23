@@ -259,6 +259,29 @@ window.opencodeDesktop = {
   },
   async restartToUpdate(): Promise<void> {
     return restartToUpdate();
+  },
+  async getRunningServers() {
+    try {
+      const servers = await invoke<Array<{
+        pid: number;
+        port: number | null;
+        command: string;
+        started: string;
+      }>>('desktop_get_running_servers');
+      return servers;
+    } catch (error) {
+      console.error('[desktop] Error getting running servers:', error);
+      return [];
+    }
+  },
+  async cleanupOrphanProcesses() {
+    try {
+      const killed = await invoke<number>('desktop_cleanup_orphan_processes');
+      return killed;
+    } catch (error) {
+      console.error('[desktop] Error cleaning up orphan processes:', error);
+      return 0;
+    }
   }
 };
 

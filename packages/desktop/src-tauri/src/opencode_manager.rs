@@ -554,6 +554,141 @@ pub fn check_cli_exists() -> bool {
     resolve_opencode_binary().is_some()
 }
 
+/// Information about a running opencode server process
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct OpenCodeProcessInfo {
+    pub pid: u32,
+    pub port: Option<u16>,
+    pub command: String,
+    pub started: String,
+}
+
+/// Get information about all running opencode serve processes
+#[cfg(unix)]
+pub fn get_running_servers() -> Vec<OpenCodeProcessInfo> {
+    use std::process::Command;
+
+    let mut servers = Vec::new();
+
+    // Get all opencode serve processes
+    let output = Command::new("ps")
+        .args(["-eo", "pid,lstart,command"])
+        .output();
+
+    let Ok(output) = output else {
+        return servers;
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    for line in stdout.lines().skip(1) {
+        // Skip header
+        if !line.contains("opencode") || !line.contains("serve") {
+            continue;
+        }
+        // Skip grep itself
+        if line.contains("grep") {
+            continue;
+        }
+
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 6 {
+            continue;
+        }
+
+        let pid: u32 = match parts[0].parse() {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
+        // lstart format: "Mon Jan 23 10:24:00 2026" (5 fields)
+        let started = parts[1..6].join(" ");
+        let command = parts[6..].join(" ");
+
+        // Try to extract port from command
+        let port = command
+            .split_whitespace()
+            .skip_while(|&s| s != "--port")
+            .nth(1)
+            .and_then(|p| p.parse::<u16>().ok())
+            .filter(|&p| p > 0);
+
+        servers.push(OpenCodeProcessInfo {
+            pid,
+            port,
+            command,
+            started,
+        });
+    }
+
+    servers
+}
+
+#[cfg(not(unix))]
+pub fn get_running_servers() -> Vec<OpenCodeProcessInfo> {
+    Vec::new()
+}
+
+/// Clean up orphan opencode serve processes on startup
+/// This kills all opencode serve processes except the current one (if any)
+#[cfg(unix)]
+pub fn cleanup_orphan_processes(exclude_pid: Option<u32>) -> usize {
+    use std::process::Command;
+
+    let mut killed = 0;
+
+    // Find all opencode serve processes
+    let output = Command::new("pgrep").args(["-f", "opencode serve"]).output();
+
+    let Ok(output) = output else {
+        return killed;
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let current_pid = std::process::id();
+
+    for line in stdout.lines() {
+        let pid: u32 = match line.trim().parse() {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
+        // Don't kill ourselves or the excluded PID
+        if pid == current_pid {
+            continue;
+        }
+        if let Some(exclude) = exclude_pid {
+            if pid == exclude {
+                continue;
+            }
+        }
+
+        // Kill the process
+        if Command::new("kill")
+            .args(["-9", &pid.to_string()])
+            .output()
+            .is_ok()
+        {
+            info!("[desktop:opencode] Killed orphan process {}", pid);
+            killed += 1;
+        }
+    }
+
+    if killed > 0 {
+        info!(
+            "[desktop:opencode] Cleaned up {} orphan opencode processes",
+            killed
+        );
+    }
+
+    killed
+}
+
+#[cfg(not(unix))]
+pub fn cleanup_orphan_processes(_exclude_pid: Option<u32>) -> usize {
+    0
+}
+
 fn resolve_opencode_binary() -> Option<String> {
     if std::env::var("OPENCHAMBER_DISABLE_CLI").is_ok() {
         return None;
