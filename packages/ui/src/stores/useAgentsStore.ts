@@ -92,9 +92,10 @@ export type AgentWithExtras = Agent & {
  */
 function parseAgentGroup(path: string | null | undefined): string | undefined {
   if (!path) return undefined;
-  const idx = path.lastIndexOf('/agents/');
+  const normalizedPath = path.replace(/\\/g, '/');
+  const idx = normalizedPath.lastIndexOf('/agents/');
   if (idx === -1) return undefined;
-  const relative = path.substring(idx + '/agents/'.length);
+  const relative = normalizedPath.substring(idx + '/agents/'.length);
   const parts = relative.split('/');
   // parts[0] = group, parts[1] = filename; need at least 2 parts
   return parts.length > 1 ? parts[0] : undefined;

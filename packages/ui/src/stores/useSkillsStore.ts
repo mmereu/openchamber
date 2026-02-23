@@ -73,9 +73,10 @@ export interface DiscoveredSkill {
  *  e.g. "~/.config/opencode/skills/theme-system/SKILL.md"                → undefined (flat)
  */
 function parseSkillGroup(path: string): string | undefined {
-  const idx = path.lastIndexOf('/skills/');
+  const normalizedPath = path.replace(/\\/g, '/');
+  const idx = normalizedPath.lastIndexOf('/skills/');
   if (idx === -1) return undefined;
-  const relative = path.substring(idx + '/skills/'.length);
+  const relative = normalizedPath.substring(idx + '/skills/'.length);
   const parts = relative.split('/');
   // Grouped layout: <group>/<name>/SKILL.md → parts.length >= 3
   // Flat layout:    <name>/SKILL.md         → parts.length == 2
