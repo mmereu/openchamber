@@ -751,6 +751,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const [directoryStatus, setDirectoryStatus] = React.useState<Map<string, 'unknown' | 'exists' | 'missing'>>(
     () => new Map(),
   );
+  const directoryStatusRef = React.useRef<Map<string, 'unknown' | 'exists' | 'missing'>>(new Map());
   const checkingDirectories = React.useRef<Set<string>>(new Set());
   const safeStorage = React.useMemo(() => getSafeStorage(), []);
   const [collapsedProjects, setCollapsedProjects] = React.useState<Set<string>>(new Set());
@@ -1008,6 +1009,10 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
     return [...sessions].sort((a, b) => compareSessionsByPinnedAndTime(a, b, pinnedSessionIds));
   }, [sessions, pinnedSessionIds]);
 
+  React.useEffect(() => {
+    directoryStatusRef.current = directoryStatus;
+  }, [directoryStatus]);
+
   const sessionPrefetchTimersRef = React.useRef<Map<string, number>>(new Map());
   const sessionPrefetchQueueRef = React.useRef<string[]>([]);
   const sessionPrefetchInFlightRef = React.useRef<Set<string>>(new Set());
@@ -1169,7 +1174,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
     });
 
     directories.forEach((directory) => {
-      const known = directoryStatus.get(directory);
+      const known = directoryStatusRef.current.get(directory);
       if ((known && known !== 'unknown') || checkingDirectories.current.has(directory)) {
         return;
       }
@@ -1222,7 +1227,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
           checkingDirectories.current.delete(directory);
         });
     });
-  }, [sortedSessions, projects, directoryStatus]);
+  }, [sortedSessions, projects]);
 
   React.useEffect(() => {
     const prefetchTimers = sessionPrefetchTimersRef.current;
