@@ -20,6 +20,7 @@ import { DiffIcon } from '@/components/icons/DiffIcon';
 import { useUIStore, type MainTab } from '@/stores/useUIStore';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useSessionStore } from '@/stores/useSessionStore';
+import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useQuotaAutoRefresh, useQuotaStore } from '@/stores/useQuotaStore';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 
@@ -164,6 +165,24 @@ export const Header: React.FC<HeaderProps> = ({
     return state.messages.get(currentSessionId);
   });
   const sessions = useSessionStore((state) => state.sessions);
+  const activeProjectLabel = useProjectsStore((state) => {
+    if (!state.activeProjectId) {
+      return null;
+    }
+
+    const activeProject = state.projects.find((project) => project.id === state.activeProjectId);
+    if (!activeProject) {
+      return null;
+    }
+
+    const trimmedLabel = activeProject.label?.trim();
+    if (trimmedLabel) {
+      return trimmedLabel;
+    }
+
+    const pathSegments = activeProject.path.split(/[\\/]/).filter(Boolean);
+    return pathSegments[pathSegments.length - 1] ?? null;
+  });
   const quotaResults = useQuotaStore((state) => state.results);
   const fetchAllQuotas = useQuotaStore((state) => state.fetchAllQuotas);
   const isQuotaLoading = useQuotaStore((state) => state.isLoading);
@@ -941,6 +960,12 @@ export const Header: React.FC<HeaderProps> = ({
           <p>Open sessions ({shortcutLabel('toggle_sidebar')})</p>
         </TooltipContent>
       </Tooltip>
+
+      {activeProjectLabel && (
+        <div className="mr-3 min-w-0 max-w-[16rem] truncate typography-ui-label font-medium text-foreground">
+          {activeProjectLabel}
+        </div>
+      )}
 
       {tabs.length > 0 && (
         <div className="flex items-center gap-1 rounded-lg bg-[var(--surface-muted)]/50 p-1">

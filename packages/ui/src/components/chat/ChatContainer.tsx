@@ -177,7 +177,7 @@ export const ChatContainer: React.FC = () => {
     const turnHandleRef = React.useRef<number | null>(null);
     const turnIdleRef = React.useRef(false);
     const TURN_INIT = 5;
-    const TURN_BATCH = 20;
+    const TURN_BATCH = 8;
 
     const userTurnIndexes = React.useMemo(() => {
         const indexes: number[] = [];

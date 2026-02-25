@@ -85,13 +85,42 @@ const LetterAvatar: React.FC<{ label: string; color?: string | null }> = ({
   const colorVar = color ? (PROJECT_COLOR_MAP[color] ?? null) : null;
   return (
     <span
-      className="flex h-full w-full items-center justify-center text-lg font-medium select-none"
+      className="flex h-4 w-4 items-center justify-center text-[15px] font-medium leading-none select-none"
       style={{ color: colorVar ?? 'var(--surface-foreground)', fontFamily: 'var(--font-mono, monospace)' }}
     >
       {letter}
     </span>
   );
 };
+
+const ProjectStatusDots: React.FC<{
+  color: string;
+  variant?: 'streaming' | 'attention' | 'none';
+  size?: 'sm' | 'md';
+}> = ({ color, variant = 'none', size = 'md' }) => (
+  <span className="inline-flex items-center justify-center gap-px" aria-hidden="true">
+    {Array.from({ length: 3 }).map((_, index) => (
+      <span key={index} className="inline-flex h-[3px] w-[3px] items-center justify-center">
+        <span
+          className={cn(
+            size === 'sm' ? 'h-[2.5px] w-[2.5px]' : 'h-[3px] w-[3px]',
+            'rounded-full',
+            variant === 'streaming' && 'animate-grid-pulse',
+            variant === 'attention' && 'animate-attention-diamond-pulse'
+          )}
+          style={{
+            backgroundColor: color,
+            animationDelay: variant === 'streaming'
+              ? `${index * 150}ms`
+              : variant === 'attention'
+                ? (index === 1 ? '0ms' : '130ms')
+                : undefined,
+          }}
+        />
+      </span>
+    ))}
+  </span>
+);
 
 /** Single project tile in the nav rail — right-click for context menu (no visible 3-dot) */
 const ProjectTile: React.FC<{
@@ -107,6 +136,8 @@ const ProjectTile: React.FC<{
   const [menuOpen, setMenuOpen] = React.useState(false);
   const ProjectIcon = project.icon ? PROJECT_ICON_MAP[project.icon] : null;
   const projectColorVar = project.color ? (PROJECT_COLOR_MAP[project.color] ?? null) : null;
+  const showStreamingDots = hasStreaming;
+  const showAttentionDots = !hasStreaming && hasUnread;
 
   const longPressHandlers = useLongPress({
     onLongPress: () => setMenuOpen(true),
@@ -133,45 +164,64 @@ const ProjectTile: React.FC<{
               {...longPressHandlers}
               className={cn(
                 'flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden cursor-default',
-                'border border-[var(--primary)] animate-border-glow-pulse',
+                isActive
+                  ? 'bg-transparent border border-[var(--surface-foreground)]'
+                  : 'bg-transparent border border-transparent hover:bg-[var(--interactive-hover)]/50 hover:border-[var(--interactive-border)]',
+                menuOpen && !isActive && 'bg-[var(--interactive-hover)]/50 border-[var(--interactive-border)]',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]',
               )}
-            >
-              <TileBackground colorVar={projectColorVar}>
-                {ProjectIcon ? (
-                  <ProjectIcon
-                    className="h-5 w-5 shrink-0"
-                    style={projectColorVar ? { color: projectColorVar } : { color: 'var(--surface-foreground)' }}
-                  />
-                ) : (
-                  <LetterAvatar label={label} color={project.color} />
-                )}
-              </TileBackground>
-            </button>
-          ) : (
+              >
+                <TileBackground colorVar={projectColorVar}>
+                  <span className="relative h-full w-full leading-none">
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      {ProjectIcon ? (
+                        <ProjectIcon
+                          className="h-4 w-4 shrink-0"
+                          style={projectColorVar ? { color: projectColorVar } : { color: 'var(--surface-foreground)' }}
+                        />
+                      ) : (
+                        <LetterAvatar label={label} color={project.color} />
+                      )}
+                    </span>
+                    {showStreamingDots && (
+                      <span className="pointer-events-none absolute inset-x-0 top-[calc(50%+9px)] flex justify-center">
+                        <ProjectStatusDots color="var(--primary)" variant="streaming" />
+                      </span>
+                    )}
+                  </span>
+                </TileBackground>
+              </button>
+            ) : (
             <button
               type="button"
               {...longPressHandlers}
               className={cn(
                 'flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden cursor-default',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]',
-                hasUnread
-                  ? 'border border-[var(--status-info)]'
-                  : isActive
-                    ? 'bg-transparent border border-[var(--surface-foreground)]'
-                    : 'bg-transparent border border-transparent hover:bg-[var(--interactive-hover)]/50 hover:border-[var(--interactive-border)]',
-                menuOpen && !isActive && !hasUnread && 'bg-[var(--interactive-hover)]/50 border-[var(--interactive-border)]',
+                isActive
+                  ? 'bg-transparent border border-[var(--surface-foreground)]'
+                  : 'bg-transparent border border-transparent hover:bg-[var(--interactive-hover)]/50 hover:border-[var(--interactive-border)]',
+                menuOpen && !isActive && 'bg-[var(--interactive-hover)]/50 border-[var(--interactive-border)]',
               )}
             >
               <TileBackground colorVar={projectColorVar}>
-                {ProjectIcon ? (
-                  <ProjectIcon
-                    className="h-5 w-5 shrink-0"
-                    style={projectColorVar ? { color: projectColorVar } : { color: 'var(--surface-foreground)' }}
-                  />
-                ) : (
-                  <LetterAvatar label={label} color={project.color} />
-                )}
+                <span className="relative h-full w-full leading-none">
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    {ProjectIcon ? (
+                      <ProjectIcon
+                        className="h-4 w-4 shrink-0"
+                        style={projectColorVar ? { color: projectColorVar } : { color: 'var(--surface-foreground)' }}
+                      />
+                    ) : (
+                        <LetterAvatar label={label} color={project.color} />
+                    )}
+                  </span>
+                  {showAttentionDots && (
+                    <span className="pointer-events-none absolute inset-x-0 top-[calc(50%+9px)] flex justify-center">
+                      <ProjectStatusDots color="var(--status-info)" variant="attention" />
+                    </span>
+                  )}
+                </span>
               </TileBackground>
             </button>
           )}

@@ -1040,6 +1040,21 @@ textarea[data-terminal-hidden-input="true"]::placeholder {
   animation: attention-diamond-pulse 2.3s ease-in-out infinite;
 }
 
+@keyframes navrail-dot-wave {
+  0%, 100% {
+    transform: scale(0.72);
+    opacity: 0.52;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-navrail-dot-wave {
+  animation: navrail-dot-wave 1.2s ease-in-out infinite;
+}
+
 @keyframes border-glow-pulse {
   0%, 100% {
     border-color: var(--interactive-border);
