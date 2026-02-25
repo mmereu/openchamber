@@ -113,6 +113,10 @@ const PROJECT_ACTIVE_SESSION_STORAGE_KEY = 'oc.sessions.activeSessionByProject';
 const SESSION_EXPANDED_STORAGE_KEY = 'oc.sessions.expandedParents';
 const SESSION_PINNED_STORAGE_KEY = 'oc.sessions.pinned';
 
+const SESSION_PREFETCH_HOVER_DELAY_MS = 180;
+const SESSION_PREFETCH_CONCURRENCY = 1;
+const SESSION_PREFETCH_PENDING_LIMIT = 6;
+
 const formatDateLabel = (value: string | number) => {
   const targetDate = new Date(value);
   const today = new Date();
@@ -881,6 +885,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const currentSessionId = useSessionStore((state) => state.currentSessionId);
   const newSessionDraftOpen = useSessionStore((state) => Boolean(state.newSessionDraft?.open));
   const setCurrentSession = useSessionStore((state) => state.setCurrentSession);
+  const loadMessages = useSessionStore((state) => state.loadMessages);
   const updateSessionTitle = useSessionStore((state) => state.updateSessionTitle);
   const shareSession = useSessionStore((state) => state.shareSession);
   const unshareSession = useSessionStore((state) => state.unshareSession);
@@ -1002,6 +1007,95 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const sortedSessions = React.useMemo(() => {
     return [...sessions].sort((a, b) => compareSessionsByPinnedAndTime(a, b, pinnedSessionIds));
   }, [sessions, pinnedSessionIds]);
+
+  const sessionPrefetchTimersRef = React.useRef<Map<string, number>>(new Map());
+  const sessionPrefetchQueueRef = React.useRef<string[]>([]);
+  const sessionPrefetchInFlightRef = React.useRef<Set<string>>(new Set());
+
+  const pumpSessionPrefetchQueue = React.useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    while (sessionPrefetchInFlightRef.current.size < SESSION_PREFETCH_CONCURRENCY && sessionPrefetchQueueRef.current.length > 0) {
+      const nextSessionId = sessionPrefetchQueueRef.current.shift();
+      if (!nextSessionId) {
+        break;
+      }
+
+      const state = useSessionStore.getState();
+      if (state.currentSessionId === nextSessionId) {
+        continue;
+      }
+
+      const hasMessages = state.messages.has(nextSessionId);
+      const memory = state.sessionMemoryState.get(nextSessionId);
+      const isHydrated = hasMessages && memory?.historyComplete !== undefined;
+      if (isHydrated) {
+        continue;
+      }
+
+      sessionPrefetchInFlightRef.current.add(nextSessionId);
+      void loadMessages(nextSessionId)
+        .catch(() => {
+          return;
+        })
+        .finally(() => {
+          sessionPrefetchInFlightRef.current.delete(nextSessionId);
+          pumpSessionPrefetchQueue();
+        });
+    }
+  }, [loadMessages]);
+
+  const scheduleSessionPrefetch = React.useCallback((sessionId: string | null | undefined) => {
+    if (!sessionId || sessionId === currentSessionId || typeof window === 'undefined') {
+      return;
+    }
+
+    const state = useSessionStore.getState();
+    const hasMessages = state.messages.has(sessionId);
+    const memory = state.sessionMemoryState.get(sessionId);
+    const isHydrated = hasMessages && memory?.historyComplete !== undefined;
+    if (isHydrated) {
+      return;
+    }
+
+    if (sessionPrefetchInFlightRef.current.has(sessionId)) {
+      return;
+    }
+
+    if (sessionPrefetchQueueRef.current.includes(sessionId)) {
+      return;
+    }
+
+    if (sessionPrefetchQueueRef.current.length >= SESSION_PREFETCH_PENDING_LIMIT) {
+      sessionPrefetchQueueRef.current.shift();
+    }
+
+    const existingTimer = sessionPrefetchTimersRef.current.get(sessionId);
+    if (existingTimer !== undefined) {
+      window.clearTimeout(existingTimer);
+    }
+
+    const timer = window.setTimeout(() => {
+      sessionPrefetchTimersRef.current.delete(sessionId);
+      sessionPrefetchQueueRef.current.push(sessionId);
+      pumpSessionPrefetchQueue();
+    }, SESSION_PREFETCH_HOVER_DELAY_MS);
+    sessionPrefetchTimersRef.current.set(sessionId, timer);
+  }, [currentSessionId, pumpSessionPrefetchQueue]);
+
+  React.useEffect(() => {
+    if (!currentSessionId || sortedSessions.length === 0) {
+      return;
+    }
+    const currentIndex = sortedSessions.findIndex((session) => session.id === currentSessionId);
+    if (currentIndex < 0) {
+      return;
+    }
+    scheduleSessionPrefetch(sortedSessions[currentIndex - 1]?.id);
+    scheduleSessionPrefetch(sortedSessions[currentIndex + 1]?.id);
+  }, [currentSessionId, scheduleSessionPrefetch, sortedSessions]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -1131,10 +1225,16 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   }, [sortedSessions, projects, directoryStatus]);
 
   React.useEffect(() => {
+    const prefetchTimers = sessionPrefetchTimersRef.current;
     return () => {
       if (copyTimeout.current) {
         clearTimeout(copyTimeout.current);
       }
+      prefetchTimers.forEach((timer) => {
+        clearTimeout(timer);
+      });
+      prefetchTimers.clear();
+      sessionPrefetchQueueRef.current = [];
     };
   }, []);
 
