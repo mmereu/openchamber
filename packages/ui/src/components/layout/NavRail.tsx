@@ -453,6 +453,15 @@ export const NavRail: React.FC<NavRailProps> = ({ className, mobile }) => {
     [projects, reorderProjects],
   );
 
+  const navRailActionButtonClass = cn(
+    'flex h-8 w-8 items-center justify-center rounded-lg',
+    'text-foreground hover:bg-interactive-hover',
+    'transition-colors',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]',
+  );
+
+  const navRailActionIconClass = 'h-4.5 w-4.5';
+
   return (
     <>
       <nav
@@ -506,16 +515,10 @@ export const NavRail: React.FC<NavRailProps> = ({ className, mobile }) => {
                 <button
                   type="button"
                   onClick={handleAddProject}
-                  className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-lg',
-                    'text-[var(--surface-muted-foreground)] hover:text-[var(--surface-foreground)]',
-                    'hover:bg-[var(--interactive-hover)]/50',
-                    'transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--interactive-focus-ring)]',
-                  )}
+                  className={navRailActionButtonClass}
                   aria-label="Add project"
                 >
-                  <RiFolderAddLine className="h-5 w-5" />
+                  <RiFolderAddLine className={navRailActionIconClass} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -534,13 +537,13 @@ export const NavRail: React.FC<NavRailProps> = ({ className, mobile }) => {
                   type="button"
                   onClick={() => setUpdateDialogOpen(true)}
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-lg',
+                    'flex h-8 w-8 items-center justify-center rounded-lg',
                     'bg-[var(--primary)]/10 text-[var(--primary)]',
                     'hover:bg-[var(--primary)]/20 transition-colors',
                   )}
                   aria-label="Update available"
                 >
-                  <RiDownloadLine className="h-5 w-5" />
+                  <RiDownloadLine className={navRailActionIconClass} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -555,14 +558,10 @@ export const NavRail: React.FC<NavRailProps> = ({ className, mobile }) => {
                 <button
                   type="button"
                   onClick={() => setAboutDialogOpen(true)}
-                  className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-lg',
-                    'text-[var(--surface-muted-foreground)] hover:text-[var(--surface-foreground)]',
-                    'hover:bg-[var(--interactive-hover)] transition-colors',
-                  )}
+                  className={navRailActionButtonClass}
                   aria-label="About"
                 >
-                  <RiInformationLine className="h-5 w-5" />
+                  <RiInformationLine className={navRailActionIconClass} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -577,14 +576,10 @@ export const NavRail: React.FC<NavRailProps> = ({ className, mobile }) => {
                 <button
                   type="button"
                   onClick={toggleHelpDialog}
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-lg',
-                    'text-[var(--surface-muted-foreground)] hover:text-[var(--surface-foreground)]',
-                    'hover:bg-[var(--interactive-hover)] transition-colors',
-                  )}
+                  className={navRailActionButtonClass}
                   aria-label="Keyboard shortcuts"
                 >
-                  <RiQuestionLine className="h-5 w-5" />
+                  <RiQuestionLine className={navRailActionIconClass} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -598,14 +593,10 @@ export const NavRail: React.FC<NavRailProps> = ({ className, mobile }) => {
               <button
                 type="button"
                 onClick={() => setSettingsDialogOpen(true)}
-                className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-lg',
-                  'text-[var(--surface-muted-foreground)] hover:text-[var(--surface-foreground)]',
-                  'hover:bg-[var(--interactive-hover)] transition-colors',
-                )}
+                className={navRailActionButtonClass}
                 aria-label="Settings"
               >
-                <RiSettings3Line className="h-5 w-5" />
+                <RiSettings3Line className={navRailActionIconClass} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>

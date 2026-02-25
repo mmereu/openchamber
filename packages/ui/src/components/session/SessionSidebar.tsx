@@ -2020,8 +2020,19 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
     setIsProjectRenameInline(false);
   }, [activeProjectForHeader, projectRenameDraft, renameProject]);
 
-  const headerActionButtonClass =
+  const desktopHeaderActionButtonClass =
+    'inline-flex h-6 w-6 items-center justify-center rounded-md leading-none text-foreground hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50';
+  const mobileHeaderActionButtonClass =
     'inline-flex h-6 w-6 items-center justify-center rounded-md leading-none text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50';
+  const headerActionButtonClass = mobileVariant ? mobileHeaderActionButtonClass : desktopHeaderActionButtonClass;
+  const headerActionIconClass = 'h-4.5 w-4.5';
+  const addProjectButtonClass = cn(
+    'inline-flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
+    mobileVariant
+      ? 'h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50'
+      : 'h-8 w-8 text-foreground hover:bg-interactive-hover',
+    !isDesktopShellRuntime && 'bg-sidebar/60 hover:bg-sidebar',
+  );
 
   // Track when project sticky headers become "stuck"
   React.useEffect(() => {
@@ -3008,14 +3019,11 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
             <button
               type="button"
               onClick={handleOpenDirectoryDialog}
-              className={cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-                    !isDesktopShellRuntime && 'bg-sidebar/60 hover:bg-sidebar',
-              )}
+              className={addProjectButtonClass}
               aria-label="Add project"
               title="Add project"
             >
-              <RiFolderAddLine className="h-4.5 w-4.5" />
+              <RiFolderAddLine className={headerActionIconClass} />
             </button>
           </div>
           )}
@@ -3049,7 +3057,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                     className={headerActionButtonClass}
                     aria-label="New worktree"
                   >
-                    <RiNodeTree className="h-4.5 w-4.5" />
+                    <RiNodeTree className={headerActionIconClass} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={4}><p>New worktree</p></TooltipContent>
@@ -3062,7 +3070,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                     className={headerActionButtonClass}
                     aria-label="New from issue"
                   >
-                    <RiGithubLine className="h-4.5 w-4.5" />
+                    <RiGithubLine className={headerActionIconClass} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={4}><p>New from issue</p></TooltipContent>
@@ -3075,7 +3083,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                     className={headerActionButtonClass}
                     aria-label="New from PR"
                   >
-                    <RiGitPullRequestLine className="h-4.5 w-4.5" />
+                    <RiGitPullRequestLine className={headerActionIconClass} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={4}><p>New from PR</p></TooltipContent>
@@ -3088,7 +3096,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                     className={headerActionButtonClass}
                     aria-label="New multi-run"
                   >
-                    <ArrowsMerge className="h-4.5 w-4.5" />
+                    <ArrowsMerge className={headerActionIconClass} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={4}><p>New multi-run</p></TooltipContent>
@@ -3104,7 +3112,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                       className={headerActionButtonClass}
                       aria-label="Manage branches"
                     >
-                      <RiGitRepositoryLine className="h-4.5 w-4.5" />
+                      <RiGitRepositoryLine className={headerActionIconClass} />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" sideOffset={4}><p>Manage branches</p></TooltipContent>
@@ -3119,7 +3127,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                       className={headerActionButtonClass}
                       aria-label="Project notes and todos"
                     >
-                      <RiStickyNoteLine className="h-4.5 w-4.5" />
+                      <RiStickyNoteLine className={headerActionIconClass} />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" sideOffset={4}><p>Project notes</p></TooltipContent>
@@ -3134,7 +3142,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                           className={headerActionButtonClass}
                           aria-label="Project notes and todos"
                         >
-                          <RiStickyNoteLine className="h-4.5 w-4.5" />
+                          <RiStickyNoteLine className={headerActionIconClass} />
                         </button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>

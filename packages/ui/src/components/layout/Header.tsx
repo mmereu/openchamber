@@ -653,7 +653,8 @@ export const Header: React.FC<HeaderProps> = ({
     return Boolean(panelState?.isOpen && panelState.mode === 'plan');
   }, [contextPanelByDirectory, openDirectory]);
 
-  const headerIconButtonClass = 'app-region-no-drag inline-flex h-9 w-9 items-center justify-center gap-2 p-2 rounded-md typography-ui-label font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 hover:text-foreground hover:bg-interactive-hover transition-colors';
+  const desktopHeaderIconButtonClass = 'app-region-no-drag inline-flex h-8 w-8 items-center justify-center gap-2 rounded-md typography-ui-label font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 hover:bg-interactive-hover transition-colors';
+  const mobileHeaderIconButtonClass = 'app-region-no-drag inline-flex h-9 w-9 items-center justify-center gap-2 p-2 rounded-md typography-ui-label font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 hover:text-foreground hover:bg-interactive-hover transition-colors';
 
   const desktopPaddingClass = React.useMemo(() => {
     if (isDesktopApp && isMacPlatform) {
@@ -931,9 +932,9 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={handleOpenSessionSwitcher}
             aria-label="Open sessions"
-            className={`${headerIconButtonClass} mr-2 shrink-0`}
+            className={`${desktopHeaderIconButtonClass} mr-2 shrink-0`}
           >
-            <RiLayoutLeftLine className="h-5 w-5" />
+            <RiLayoutLeftLine className="h-[18px] w-[18px]" />
           </button>
         </TooltipTrigger>
         <TooltipContent>
@@ -973,9 +974,9 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 aria-label="Open plan"
                 onClick={handleOpenContextPlan}
-                className={cn(headerIconButtonClass, isContextPlanActive && 'bg-[var(--interactive-hover)] text-foreground')}
+                className={cn(desktopHeaderIconButtonClass, isContextPlanActive && 'bg-[var(--interactive-hover)]')}
               >
-                <RiFileTextLine className="h-5 w-5" />
+                <RiFileTextLine className="h-[18px] w-[18px]" />
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -1005,13 +1006,13 @@ export const Header: React.FC<HeaderProps> = ({
                       ? `Open instance, usage and MCP (current: ${currentInstanceLabel})`
                       : 'Open services, usage and MCP'}
                     className={cn(
-                      headerIconButtonClass,
+                      desktopHeaderIconButtonClass,
                       isDesktopApp
                         ? 'w-auto max-w-[14rem] justify-start gap-1.5 px-2.5'
-                        : 'h-9 w-9'
+                        : 'h-8 w-8'
                     )}
                   >
-                    <RiStackLine className="h-5 w-5" />
+                    <RiStackLine className="h-[18px] w-[18px]" />
                     {isDesktopApp && <span className="truncate typography-ui-label font-medium text-foreground">{currentInstanceLabel}</span>}
                   </button>
                 </DropdownMenuTrigger>
@@ -1248,9 +1249,9 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={toggleBottomTerminal}
               aria-label="Toggle terminal panel"
-              className={headerIconButtonClass}
+              className={desktopHeaderIconButtonClass}
             >
-              <RiTerminalBoxLine className="h-5 w-5" />
+              <RiTerminalBoxLine className="h-[18px] w-[18px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -1264,9 +1265,9 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={toggleRightSidebar}
               aria-label="Toggle right sidebar"
-              className={headerIconButtonClass}
+              className={desktopHeaderIconButtonClass}
             >
-              <RiLayoutRightLine className="h-5 w-5" />
+              <RiLayoutRightLine className="h-[18px] w-[18px]" />
             </button>
           </TooltipTrigger>
           <TooltipContent>
@@ -1281,8 +1282,8 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   type="button"
                   className={cn(
-                    headerIconButtonClass,
-                    'h-8 w-8 p-0 overflow-hidden rounded-full border border-border/60 bg-muted/80'
+                    desktopHeaderIconButtonClass,
+                    'h-7 w-7 p-0 overflow-hidden rounded-full border border-border/60 bg-muted/80'
                   )}
                   title={githubLogin ? `GitHub: ${githubLogin}` : 'GitHub connected'}
                   disabled={isSwitchingGitHubAccount}
@@ -1296,7 +1297,7 @@ export const Header: React.FC<HeaderProps> = ({
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <RiGithubFill className="h-4 w-4 text-muted-foreground" />
+                    <RiGithubFill className="h-3.5 w-3.5 text-foreground" />
                   )}
                 </button>
               </DropdownMenuTrigger>
@@ -1352,7 +1353,7 @@ export const Header: React.FC<HeaderProps> = ({
             </DropdownMenu>
           ) : (
             <div
-              className="app-region-no-drag flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-muted/80"
+              className="app-region-no-drag flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-muted/80"
               title={githubLogin ? `GitHub: ${githubLogin}` : 'GitHub connected'}
             >
               {githubAvatarUrl ? (
@@ -1364,7 +1365,7 @@ export const Header: React.FC<HeaderProps> = ({
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <RiGithubFill className="h-4 w-4 text-muted-foreground" />
+                <RiGithubFill className="h-3.5 w-3.5 text-foreground" />
               )}
             </div>
           )
@@ -1382,7 +1383,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onToggleLeftDrawer}
             className={cn(
-              headerIconButtonClass,
+              mobileHeaderIconButtonClass,
               leftDrawerOpen && 'bg-interactive-selection text-interactive-selection-foreground'
             )}
             aria-label={leftDrawerOpen ? 'Close sessions' : 'Open sessions'}
@@ -1444,7 +1445,7 @@ export const Header: React.FC<HeaderProps> = ({
                             aria-selected={isActive}
                             role="tab"
                             className={cn(
-                              headerIconButtonClass,
+                              mobileHeaderIconButtonClass,
                               'relative rounded-lg',
                               isActive && 'bg-interactive-selection text-interactive-selection-foreground'
                             )}
@@ -1496,7 +1497,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                       type="button"
                       aria-label="View services"
-                      className={headerIconButtonClass}
+                      className={mobileHeaderIconButtonClass}
                     >
                       <RiStackLine className="h-5 w-5" />
                     </button>
@@ -1735,7 +1736,7 @@ export const Header: React.FC<HeaderProps> = ({
                     type="button"
                     onClick={onToggleRightDrawer}
                     className={cn(
-                      headerIconButtonClass,
+                      mobileHeaderIconButtonClass,
                       'relative',
                       rightDrawerOpen && 'bg-interactive-selection text-interactive-selection-foreground'
                     )}
